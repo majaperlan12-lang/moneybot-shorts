@@ -1,5 +1,6 @@
 name: Money Shorts Bot
 
+
 on:
   schedule:
     - cron: "7 6,12,18 * * *"   # 3 ggr/dag (UTC)
