@@ -1,0 +1,38 @@
+name: Money Shorts Bot
+
+on:
+  schedule:
+    - cron: "7 6,12,18 * * *"   # 3 ggr/dag (UTC)
+  workflow_dispatch: {}
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install FFmpeg
+        run: sudo apt-get update && sudo apt-get install -y ffmpeg
+      - name: Install deps
+        run: pip install -r scripts/requirements.txt
+      - name: Run bot
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          BLUESKY_HANDLE: ${{ secrets.BLUESKY_HANDLE }}
+          BLUESKY_APP_PASSWORD: ${{ secrets.BLUESKY_APP_PASSWORD }}
+          YT_CLIENT_ID: ${{ secrets.YT_CLIENT_ID }}
+          YT_CLIENT_SECRET: ${{ secrets.YT_CLIENT_SECRET }}
+          YT_REFRESH_TOKEN: ${{ secrets.YT_REFRESH_TOKEN }}
+          AFFILIATE_URL: ${{ secrets.AFFILIATE_URL }}
+        run: python scripts/main.py
+      - name: Commit outputs
+        run: |
+          git config user.name "moneybot"
+          git config user.email "actions@users.noreply.github.com"
+          git add out/*.mp4 out/*.jpg || true
+          git commit -m "auto: new shorts" || echo "no changes"
+          git push || true
