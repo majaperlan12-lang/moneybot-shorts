@@ -1,6 +1,5 @@
 name: Money Shorts Bot
 
-
 on:
   schedule:
     - cron: "7 6,12,18 * * *"   # 3 ggr/dag (UTC)
@@ -29,7 +28,7 @@ jobs:
           YT_CLIENT_SECRET: ${{ secrets.YT_CLIENT_SECRET }}
           YT_REFRESH_TOKEN: ${{ secrets.YT_REFRESH_TOKEN }}
           AFFILIATE_URL: ${{ secrets.AFFILIATE_URL }}
-       run: python -m scripts.main
+        run: python -m scripts.main
       - name: Commit outputs
         run: |
           git config user.name "moneybot"
