@@ -11,6 +11,14 @@ thumbnail JPEG is also produced from the first frame of the video.
 import os
 import re
 import textwrap
+from PIL import Image  # compatibility import
+# Pillow 10 removed ANTIALIAS; alias it to LANCZOS if missing
+try:
+    Image.ANTIALIAS
+except AttributeError:
+    Image.ANTIALIAS = Image.Resampling.LANCZOS
+
+
 from moviepy.editor import ImageClip, AudioFileClip, CompositeVideoClip, TextClip, vfx
 
 
