@@ -51,7 +51,7 @@ def create_video(image_path: str, audio_path: str, script: str, slug: str, out_d
     # Prepare the background image clip
     bg = ImageClip(image_path).resize((1080, 1920))
     # Apply a gentle zoom-in effect throughout the video
-    video_clip = bg.set_duration(duration).fx(vfx.zoom_in, 0.1)
+    vvideo_clip = bg.set_duration(duration).resize(lambda t: 1 + 0.05 * (t / duration))
     # Split script into sentences for subtitle timing
     sentences = [s.strip() for s in re.split(r'(?<=[.!?]) +', script.strip()) if s.strip()]
     num_segments = len(sentences) if sentences else 1
