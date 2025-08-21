@@ -19,7 +19,7 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y ffmpeg imagemagick
       - name: Install deps
         run: pip install -r scripts/requirements.txt
-      - name: Run bot
+            - name: Run bot
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           BLUESKY_HANDLE: ${{ secrets.BLUESKY_HANDLE }}
@@ -28,9 +28,11 @@ jobs:
           YT_CLIENT_SECRET: ${{ secrets.YT_CLIENT_SECRET }}
           YT_REFRESH_TOKEN: ${{ secrets.YT_REFRESH_TOKEN }}
           AFFILIATE_URL: ${{ secrets.AFFILIATE_URL }}
-        run: python -m scripts.main
-      - name: Commit outputs
-        run: |
+          CONTENT_MODE: ${{ vars.CONTENT_MODE }}
+          PARTS_PER_SERIES: ${{ vars.PARTS_PER_SERIES }}
+          SERIES_SEEDS: ${{ vars.SERIES_SEEDS }}
+          LANGUAGE: ${{ vars.LANGUAGE }}
+        run: python -m scripts.main |
           git config user.name "moneybot"
           git config user.email "actions@users.noreply.github.com"
           git add out/*.mp4 out/*.jpg || true
