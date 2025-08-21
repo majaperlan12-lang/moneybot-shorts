@@ -9,88 +9,69 @@ the following keys: `script`, `tweet`, `title`, `description` and
 response isn't valid JSON.
 """
 
-import json
 import os
-import time
-import openai
+from openai import OpenAI
 
+client = OpenAI()
 
-def generate_content(topic: dict, affiliate_url: str = None, retries: int = 3) -> dict:
-    """
-    Generate narrative content for a short video given a trending topic.
+def _cta():
+    aff = os.environ.get("AFFILIATE_URL", "").strip()
+    return f"Support the channel: {aff}" if aff else "Support the channel ❤️"
 
-    Parameters
-    ----------
-    topic : dict
-        A dictionary containing `title`, `url` and `snippet` keys describing the topic.
-    affiliate_url : str, optional
-        A URL to include in calls to action. If not supplied, a generic phrase is used.
-    retries : int
-        Number of times to retry the API call on transient failures.
+def _hashes(mode: str):
+    base = ["#Shorts", "#Storytime", "#Viral", "#AI"]
+    if mode == "voxel_story":
+        base += ["#Voxel", "#Gaming", "#MinecraftStyle"]
+    elif mode == "spooky_story":
+        base += ["#Horror", "#Creepy", "#ScaryStory"]
+    elif mode == "funny_texts":
+        base += ["#Funny", "#Texts", "#Comedy"]
+    return base[:10]
 
-    Returns
-    -------
-    dict
-        A dictionary with keys `script`, `tweet`, `title`, `description` and `hashtags`.
-    """
-    affiliate_text = affiliate_url if affiliate_url else "Support the channel"
-    title_topic = topic.get("title", "Unknown topic")
-    prompt = (
-        f"You are a creative content creator for social media platforms. "
-        f"Create the following items for a 30 second vertical video about the topic \"{title_topic}\":\n"
-        f"1. SCRIPT: A narrative script in English lasting roughly 30 seconds. Start with a strong hook in the first two seconds. "
-        f"Tell a compelling story based on the topic. Conclude with a call-to-action directing viewers to {affiliate_text}.\n"
-        f"2. TWEET: A short message under 280 characters in English promoting the video with a call to action to {affiliate_text}.\n"
-        f"3. TITLE: A concise, attention grabbing YouTube Short title.\n"
-        f"4. DESCRIPTION: A longer description for the video including a call to action directing viewers to {affiliate_text}.\n"
-        f"5. HASHTAGS: A list of 6-10 relevant hashtags for the topic.\n"
-        f"Format your answer as JSON with the keys script, tweet, title, description, hashtags (the hashtags as a list)."
+def _system(language: str):
+    return f"You are a concise social video writer. Language: {language or 'en'}. Max 30 seconds script. Hook in first 2 seconds."
+
+def _user_prompt(mode: str, seed: str, part: int):
+    if mode == "voxel_story":
+        return (f"Write a 28-30s narrated micro-episode in English for a voxel/blocky sandbox adventure series titled '{seed}', Part {part}. "
+                "1 hero, clear stakes, cliffhanger ending. No trademarked names or logos. Keep sentences short for captions.")
+    if mode == "spooky_story":
+        return (f"Write a 28-30s creepy micro-horror in English titled '{seed}', Part {part}. "
+                "First-person, sensory hooks, safe-for-Shorts, cliffhanger ending.")
+    if mode == "funny_texts":
+        return (f"Write a 25-30s 'funny texts' skit in English titled '{seed}', Part {part}. "
+                "Present as short narrator lines that describe hilarious SMS thread beats. Family-friendly.")
+    # mixed fallback
+    return f"Write a 28-30s micro-episode in English titled '{seed}', Part {part}. Hook + cliffhanger."
+
+def generate_content(topic, language="en"):
+    meta = topic.get("meta", {})
+    mode = meta.get("mode", os.environ.get("CONTENT_MODE", "mixed")).lower()
+    seed = meta.get("seed", topic.get("title"))
+    part = int(meta.get("part", 1))
+
+    messages = [
+        {"role": "system", "content": _system(language)},
+        {"role": "user", "content": _user_prompt(mode, seed, part)},
+    ]
+    resp = client.chat.completions.create(
+        model="gpt-4o-mini",
+        messages=messages,
+        temperature=0.8,
     )
-    for attempt in range(retries):
-        try:
-            response = openai.chat.completions.create(
-                model="gpt-4o",
-                messages=[{"role": "user", "content": prompt}],
-                temperature=0.7,
-            )
-            raw = response.choices[0].message.content.strip()
-            # Try to parse JSON directly
-            try:
-                data = json.loads(raw)
-                return data
-            except json.JSONDecodeError:
-                # Attempt to find a JSON substring in the response
-                start = raw.find("{")
-                end = raw.rfind("}")
-                if start != -1 and end != -1 and end > start:
-                    try:
-                        data = json.loads(raw[start : end + 1])
-                        return data
-                    except Exception:
-                        pass
-                # Fallback to manual parsing by labels
-                result = {"script": "", "tweet": "", "title": "", "description": "", "hashtags": []}
-                for line in raw.splitlines():
-                    if ':' in line:
-                        key, value = line.split(':', 1)
-                        key = key.strip().lower()
-                        value = value.strip()
-                        if key.startswith("script"):
-                            result["script"] = value
-                        elif key.startswith("tweet"):
-                            result["tweet"] = value
-                        elif key.startswith("title"):
-                            result["title"] = value
-                        elif key.startswith("description"):
-                            result["description"] = value
-                        elif key.startswith("hashtags"):
-                            tags = [t.strip().lstrip("#") for t in value.replace(",", " ").split()]
-                            result["hashtags"] = [f"#{t}" for t in tags if t]
-                return result
-        except Exception as e:
-            # Basic exponential backoff on failure
-            if attempt < retries - 1:
-                time.sleep(2 ** attempt)
-                continue
-            raise
-    return {}
+    script = resp.choices[0].message.content.strip()
+
+    title = f"{seed} — Part {part}"
+    desc = f"{script}\n\n{_cta()}"
+    tags = _hashes(mode)
+    tweet = f"{title} — {_cta()}"
+
+    return {
+        "script": script,
+        "title": title,
+        "description": desc,
+        "hashtags": tags,
+        "tweet": tweet[:270],
+        "series": {"seed": seed, "part": part, "mode": mode}
+    }
+
