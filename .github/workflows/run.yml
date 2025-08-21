@@ -3,7 +3,7 @@ name: Money Shorts Bot
 on:
   schedule:
     - cron: "7 6,12,18 * * *"   # 3 ggr/dag (UTC)
-  workflow_dispatch: {}
+  workflow_dispatch: {} 
 
 jobs:
   build:
@@ -16,7 +16,7 @@ jobs:
         with:
           python-version: "3.11"
       - name: Install FFmpeg
-        run: sudo apt-get update && sudo apt-get install -y ffmpeg
+        run: sudo apt-get update && sudo apt-get install -y ffmpeg imagemagick
       - name: Install deps
         run: pip install -r scripts/requirements.txt
       - name: Run bot
